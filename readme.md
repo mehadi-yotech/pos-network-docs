@@ -6,7 +6,7 @@ I'm now contemplating the value of this single-authority blockchain. It's essent
 I'm currently focused on integrating Hyperledger Fabric into a Point of Sale (POS) system. The aim is to leverage its immutability and integrity for managing transaction and payout data. My current setup involves a single Certificate Authority (CA) and Membership Service Provider (MSP), representing a single authority or organization. There are two peers in place, one designated as an endorser and the other as a committer. For ordering, I'm using three orderers with Raft consensus, and I've selected CouchDB as the state database. Everything is being configured on a single channel.
 
 ## Prototype Planning
-I am starting from a new directory and create the project from scratch, using `fabric-samples` only as a reference. I'm not using using `fabric-sample` as template because the `fabric-samples/test-network` is heavily reliant on the `network.sh` script. While `fabric-sample` project is powerful, it is designed specifically for a two-organization setup. Trying to "strip it down" to a one-organization/one-MSP setup will result in broken logic and difficult-to-debug shell script errors. Moreover, `fabric-samples` includes many binaries, environment variables, and chaincode examples that we won’t need. A clean directory ensures developer to understand every file in the architecture.
+I am starting from a new directory and create the project from scratch, using `fabric-samples` only as a reference. I'm not using  `fabric-sample` as a template because the `fabric-samples/test-network` is heavily reliant on the `network.sh` script. While `fabric-sample` project is powerful, it is designed specifically for a two-organization setup. Trying to "strip it down" to a one-organization/one-MSP setup will result in broken logic and difficult-to-debug shell script errors. Moreover, `fabric-samples` includes many binaries, environment variables, and chaincode examples that we won’t need. A clean directory ensures developer to understand every file in the architecture.
 
 Note: This prototype project uses `cryptogen` like sample-project but rather `Fabric CAs`. However, in production have to use `Fabric CAs`.
 
@@ -552,6 +552,11 @@ We must ensure no old data exists in Docker or on our disk.
     rm -rf organizations/peerOrganizations
     rm -f channel-artifacts/poschannel.block
     ```
+    make sure you clean everything to avoid errors:
+    ```
+    docker rm -f $(docker ps -aq)
+    docker system prune -a --volumes
+    ```
 
 ---
 
@@ -570,7 +575,10 @@ This step is critical. `configtxgen` will now grab the **newly created** CA fing
 export FABRIC_CFG_PATH=$PWD/config
 ./bin/configtxgen -profile POSChannelProfile -outputBlock ./channel-artifacts/poschannel.block -channelID poschannel
 ```
-
+Optional, If the permission is denied, run this command
+```bash
+chmod +x ./bin/*
+```
 ---
 
 #### Step 5: Launch the Servers
@@ -583,7 +591,13 @@ docker-compose up -d
 ---
 
 #### Step 6: Join the Orderer (The Moment of Truth)
-Now we need to join the three orderer nodes. This ensures that even if one node goes down, our POS system will continue to process payments. Go back to the **project root** and run the join command. Since the Block and the Certificates were created 60 seconds ago in the same workflow, they are now mathematically linked.
+Now we need to join the three orderer nodes. This ensures that even if one node goes down, our POS system will continue to process payments. Go back to the **project root**
+
+```
+cd ..
+```
+
+and run the join command. Since the Block and the Certificates were created 60 seconds ago in the same workflow, they are now mathematically linked.
 
 **Join Orderer 0 (Port 7053)**
 ```bash
@@ -619,11 +633,8 @@ Now we need to join the three orderer nodes. This ensures that even if one node 
 ```
 
 After joining all three, wait 15–20 seconds for the nodes to perform their Raft election. Then verify they are healthy:
-```
-./bin/osnadmin channel list -o orderer0.pos.com:7053 --ca-file
-./organizations/ordererOrganizations/pos.com/orderers/orderer0.pos.com/tls/ca.crt --client-cert
-./organizations/ordererOrganizations/pos.com/orderers/orderer0.pos.com/tls/server.crt --client-key
-./organizations/ordererOrganizations/pos.com/orderers/orderer0.pos.com/tls/server.key
+```bash
+./bin/osnadmin channel list -o orderer0.pos.com:7053 --ca-file ./organizations/ordererOrganizations/pos.com/orderers/orderer0.pos.com/tls/ca.crt --client-cert ./organizations/ordererOrganizations/pos.com/orderers/orderer0.pos.com/tls/server.crt --client-key ./organizations/ordererOrganizations/pos.com/orderers/orderer0.pos.com/tls/server.key
 ```
 Look for: `"status": "active"`. If it says "inactive", your orderers cannot talk to each other on the cluster port (7054, 8054, etc.).
 
@@ -1039,4 +1050,48 @@ Query the trasaction
 
 ---
 
+
+# Visualization
+Now, let's visualize our world-state-database (couchdb) and the blockchain ledger. 
+
+### Part 1: World State Database (CouchDB) visualization
+**Update `docker-compose.yaml` file**
+
+Currently, our CouchDB containers are "hidden" inside Docker. To see the UI (Fauxton), we must map the ports to your local machine.
+
+Update the main **`docker/docker-compose.yaml`** file (`couchdb0` needs port `5984`, and since port `5984` will be taken, we will use `7984` for `couchdb1`):
+
+```yaml
+  couchdb0:
+    container_name: couchdb0
+    image: couchdb:3.1.1
+    environment: [COUCHDB_USER=admin, COUCHDB_PASSWORD=adminpw]
+    ports:
+      - 5984:5984  # <--- Access Peer0's DB at http://localhost:5984/_utils
+    networks: [pos_network]
+
+  couchdb1:
+    container_name: couchdb1
+    image: couchdb:3.1.1
+    environment: [COUCHDB_USER=admin, COUCHDB_PASSWORD=adminpw]
+    ports:
+      - 7984:5984  # <--- Access Peer1's DB at http://localhost:7984/_utils
+    networks: [pos_network]
+```
+
+**After saving, run:**
+```bash
+cd docker
+docker-compose up -d
+```
+Now we can go to **`http://localhost:5984/_utils`** login with `username: admin`, `password: adminpw`, and see your business data.
+
+![alt text](image-5.png)
+![alt text](image-6.png)
+![alt text](image-4.png)
+
+---
+
+### Part 2: Ledger Visualization using Hyperledger Explorer 
+**Setup Hyperledger Explorer**
 
