@@ -924,7 +924,7 @@ Now commit to the Channel. This activates the chaincode on the channel. Because 
 ```
 
 ---
-
+<a id="test_transaction_anchor"></a>
 #### Step 12: Test it (The POS Transaction)
 Now that the contract is active, let's record a Stripe transaction in the blockchain.
 
@@ -1049,7 +1049,30 @@ Query the trasaction
 ```
 
 ---
+## Running an existing project
 
+First, restart the docker:
+```bash
+cd docker
+docker-compose up -d
+```
+Then we have to re-authenticate. Because, every time we open a new terminal window or restart our computer, we must "re-authenticate" our session by setting the Fabric environment variables. Since we are targeting `peer0` from `POSBusinessMSP`, we have to run this block of code every time we start a new terminal:
+```bash
+# Point to the config folder (where core.yaml lives)
+export FABRIC_CFG_PATH=$PWD/config
+
+# Set the Peer Identity variables
+export CORE_PEER_TLS_ENABLED=true
+export CORE_PEER_LOCALMSPID="POSBusinessMSP"
+export CORE_PEER_TLS_ROOTCERT_FILE=$PWD/organizations/peerOrganizations/pos.com/peers/peer0.pos.com/tls/ca.crt
+export CORE_PEER_MSPCONFIGPATH=$PWD/organizations/peerOrganizations/pos.com/users/Admin@pos.com/msp
+export CORE_PEER_ADDRESS=peer0.pos.com:7051
+```
+
+Then we can try initiating a new transaction if we want and verify the transactions. For testing, go to: [Step-12](#test_transaction_anchor)
+
+
+---
 
 # Visualization
 Now, let's visualize our world-state-database (couchdb) and the blockchain ledger. 
