@@ -1068,6 +1068,16 @@ export CORE_PEER_TLS_ROOTCERT_FILE=$PWD/organizations/peerOrganizations/pos.com/
 export CORE_PEER_MSPCONFIGPATH=$PWD/organizations/peerOrganizations/pos.com/users/Admin@pos.com/msp
 export CORE_PEER_ADDRESS=peer0.pos.com:7051
 ```
+Then join peer 1 to the channel.
+```
+# Set environment for peer1
+export CORE_PEER_ADDRESS=peer1.pos.com:9051
+export CORE_PEER_TLS_ROOTCERT_FILE=$PWD/organizations/peerOrganizations/pos.com/peers/peer1.pos.com/tls/ca.crt
+export CORE_PEER_MSPCONFIGPATH=$PWD/organizations/peerOrganizations/pos.com/users/Admin@pos.com/msp
+
+# Join the channel (assuming you have the poschannel.block file)
+./bin/peer channel join -b ./channel-artifacts/poschannel.block
+```
 
 Then we can try initiating a new transaction if we want and verify the transactions. For testing, go to: [Step-12](#test_transaction_anchor)
 
@@ -1117,4 +1127,5 @@ Now we can go to **`http://localhost:5984/_utils`** login with `username: admin`
 
 ### Part 2: Ledger Visualization using Hyperledger Explorer 
 **Setup Hyperledger Explorer**
+
 
