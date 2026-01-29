@@ -1084,6 +1084,7 @@ Then we can try initiating a new transaction if we want and verify the transacti
 
 ---
 
+
 # Visualization
 Now, let's visualize our world-state-database (couchdb) and the blockchain ledger. 
 
